@@ -31,3 +31,4 @@ class Avion:
 
     def est_en_urgence(self) -> bool:
         return self.carburant < 10
+
