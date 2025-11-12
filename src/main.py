@@ -1,0 +1,1 @@
+print("Bienvenue dans le simulateur de tour de contrôle !")
