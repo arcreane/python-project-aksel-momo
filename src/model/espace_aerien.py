@@ -5,7 +5,7 @@ from model.avion import Avion
 class EspaceAerien:
 
     def __init__(self):
-        self.avions: List[Avion] = []
+        self.avions: List[Avion] = [
 
     def ajouter_avion(self, avion: Avion):
         self.avions.append(avion)
