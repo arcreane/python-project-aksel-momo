@@ -1,28 +1,26 @@
-
-from model.avion import Avion
 import math
-import random
+from typing import List, Tuple
+from model.avion import Avion
 
 class EspaceAerien:
     def __init__(self):
-        self.avions = []
+        self.avions: List[Avion] = []
 
     def ajouter_avion(self, avion: Avion):
         self.avions.append(avion)
 
-    def generer_avion_aleatoire(self):
-        identifiant = f"AV{random.randint(1000,9999)}"
-        x, y, altitude = random.randint(0, 800), random.randint(0, 800), random.randint(2000, 10000)
-        avion = Avion(identifiant, x, y, altitude)
-        self.ajouter_avion(avion)
+    def retirer_avion(self, identifiant: str):
+        self.avions = [a for a in self.avions if a.identifiant != identifiant]
 
-    def detecter_collisions(self):
-        collisions = []
-        for i, a1 in enumerate(self.avions):
-            for a2 in self.avions[i + 1:]:
-                if self.distance(a1, a2) < 20 and abs(a1.altitude - a2.altitude) < 300:
-                    collisions.append((a1, a2))
-        return collisions
-
-    def distance(self, a1: Avion, a2: Avion):
-        return math.sqrt((a1.x - a2.x) ** 2 + (a1.y - a2.y) ** 2)
+    def detecter_proximite(self, seuil_m: float = 500.0) -> List[Tuple[Avion, Avion, float, float]]:
+        proches = []
+        n = len(self.avions)
+        for i in range(n):
+            for j in range(i+1, n):
+                a = self.avions[i]
+                b = self.avions[j]
+                dist = math.hypot(a.x - b.x, a.y - b.y)
+                alt_diff = abs(a.altitude - b.altitude)
+                if dist <= seuil_m and alt_diff <= 300:
+                    proches.append((a, b, dist, alt_diff))
+        return proches
