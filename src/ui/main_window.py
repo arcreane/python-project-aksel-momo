@@ -5,7 +5,7 @@ import sys
 
 class MainWindow(QMainWindow):
     def __init__(self):
-        super().__init__()
+        super().__init__(
         self.setWindowTitle("Simulateur Tour de Contrôle 🛫")
         self.setGeometry(200, 200, 1000, 600)
 
