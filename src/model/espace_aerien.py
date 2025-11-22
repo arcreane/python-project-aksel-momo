@@ -3,6 +3,7 @@ from typing import List, Tuple
 from model.avion import Avion
 
 class EspaceAerien:
+
     def __init__(self):
         self.avions: List[Avion] = []
 
