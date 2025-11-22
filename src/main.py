@@ -1,9 +1,12 @@
-from model.simulation import Simulation
+import sys
+from PySide6.QtWidgets import QApplication
+from ui.main_window import MainWindow
 
-simu = Simulation()
-for _ in range(3):
-    simu.espace.generer_avion_aleatoire()
+def main():
+    app = QApplication(sys.argv)
+    fenetre = MainWindow()
+    fenetre.show()
+    sys.exit(app.exec())
 
-simu.demarrer()
-for _ in range(5):
-    simu.mise_a_jour()
+if __name__ == "__main__":
+    main()
