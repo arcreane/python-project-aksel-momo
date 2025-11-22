@@ -4,8 +4,8 @@ import random
 
 
 class EspaceAerien:
-    TAILLE_X = 1000  # km
-    TAILLE_Y = 1000  # km
+    TAILLE_X = 1000
+    TAILLE_Y = 1000
 
     def __init__(self):
         self.avions = []
