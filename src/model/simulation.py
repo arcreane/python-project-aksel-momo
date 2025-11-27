@@ -2,7 +2,6 @@ from model.espace_aerien import EspaceAerien
 from model.avion import Avion
 import random
 
-        avions_a_retirer = []
 
 class Simulation:
     TEMPS_PAR_TICK_S = 0.1
@@ -39,6 +38,8 @@ class Simulation:
 
         delta_temps_heures = (self.TEMPS_PAR_TICK_S * self.vitesse_simulation) / 3600.0
         self.tick_compteur += 1
+
+        avions_a_retirer = []
 
         for avion in self.espace.avions:
             avion.deplacer(delta_temps_heures)
