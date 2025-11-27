@@ -10,6 +10,7 @@ class AvionItem(QGraphicsEllipseItem):
         super().__init__(QRectF(-radius / 2, -radius / 2, radius, radius))
         self.avion = avion
         self.radius = radius
+
         self.default_brush = QBrush(QColor(30, 144, 255))
         self.alert_brush = QBrush(QColor(220, 20, 60))
         self.proximite_brush = QBrush(QColor(255, 165, 0))
