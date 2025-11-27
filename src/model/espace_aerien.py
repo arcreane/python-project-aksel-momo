@@ -17,7 +17,7 @@ class EspaceAerien:
     ALTITUDE_APPROCHE_MAX = 1500
 
     def __init__(self):
-        self.avions = []
+        self.avions: list[Avion] = []
 
     def ajouter_avion(self, avion: Avion):
         self.avions.append(avion)
@@ -64,7 +64,8 @@ class EspaceAerien:
         if not avion.instruction_atterrissage:
             return False
 
-        dist_aeroport = self.distance_laterale(avion,Avion("", self.AEROPORT_X, self.AEROPORT_Y,0))
+        aeroport_temp = Avion("", self.AEROPORT_X, self.AEROPORT_Y, 0)
+        dist_aeroport = self.distance_laterale(avion, aeroport_temp)
 
         if dist_aeroport > self.ZONE_APPROCHE_RAYON:
             return False
@@ -74,5 +75,4 @@ class EspaceAerien:
 
         avion.en_vol = False
         avion.a_atterri = True
-
         return True
