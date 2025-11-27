@@ -3,7 +3,6 @@ import math
 
 
 class Avion:
-
     def __init__(self, identifiant: str, x: float, y: float, altitude: int):
         self.identifiant = identifiant
         self.x = x
@@ -14,7 +13,6 @@ class Avion:
         self.carburant = 100.0
         self.en_vol = True
         self.alerte_collision = False
-
         self.instruction_atterrissage = False
         self.a_atterri = False
 
@@ -25,9 +23,9 @@ class Avion:
         rad = math.radians(self.cap)
 
         distance_parcourue = self.vitesse * delta_temps_heures * 100
-
         self.x += math.cos(rad) * distance_parcourue
         self.y += math.sin(rad) * distance_parcourue
+
 
         self.carburant = max(0.0, self.carburant - (10.0 * delta_temps_heures))
 

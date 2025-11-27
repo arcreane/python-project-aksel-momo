@@ -17,10 +17,11 @@ class EspaceAerien:
     ALTITUDE_APPROCHE_MAX = 1500
 
     def __init__(self):
-        self.avions: list[Avion] = []
+        self.avions = []
 
     def ajouter_avion(self, avion: Avion):
         self.avions.append(avion)
+
 
     def generer_avion_aleatoire(self):
         identifiant = f"AV{random.randint(1000, 9999)}"
@@ -39,6 +40,9 @@ class EspaceAerien:
 
     def detecter_collisions(self) -> list[tuple[Avion, Avion]]:
         collisions = []
+        DISTANCE_MIN_LAT = 15
+        DISTANCE_MIN_ALT = 300
+
         for avion in self.avions:
             avion.alerte_collision = False
 
