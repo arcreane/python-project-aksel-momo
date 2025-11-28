@@ -14,6 +14,8 @@ class Avion:
         self.alerte_collision = False
         self.instruction_atterrissage = False
         self.a_atterri = False
+        self.incident = False
+        self.compteur_tempete = 0.0
 
     def deplacer(self, delta_temps_heures: float):
         if delta_temps_heures <= 0 or not self.en_vol:
@@ -37,4 +39,4 @@ class Avion:
         self.altitude = max(0, self.altitude - delta)
 
     def est_en_urgence(self) -> bool:
-        return self.carburant < 10.0 or self.alerte_collision
+        return self.carburant < 10.0 or self.alerte_collision or self.incident

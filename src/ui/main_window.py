@@ -2,7 +2,7 @@ import sys
 import math
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QLabel, QPushButton, QApplication, QGroupBox, QSpinBox, QListWidget
+    QLabel, QPushButton, QApplication, QGroupBox, QSpinBox, QListWidget, QListWidgetItem
 )
 from PySide6.QtCore import Qt, QTimer
 from model.simulation import Simulation
@@ -16,7 +16,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Simulateur Tour de Contrôle 🛫")
-        self.setGeometry(100, 100, 1300, 850)  # Un peu plus large pour la liste
+        self.setGeometry(100, 100, 1300, 850)
 
         self.simulation = Simulation()
         self.avion_selectionne: Avion = None
@@ -24,7 +24,6 @@ class MainWindow(QMainWindow):
         self._setup_ui()
         self._setup_timer()
 
-        # Connexion du signal de sélection de l'avion du radar (Clic Radar -> UI)
         self.radar_view.avion_selectionne.connect(self._selectionner_avion)
 
         self._simulation_tick()
@@ -33,7 +32,6 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         main_layout = QHBoxLayout(central_widget)
 
-        # --- Panneau Gauche : Radar ---
         radar_group = QGroupBox("Zone de Visualisation Radar")
         radar_layout = QVBoxLayout(radar_group)
 
@@ -41,20 +39,27 @@ class MainWindow(QMainWindow):
         radar_layout.addWidget(self.radar_view)
 
         btn_layout = QHBoxLayout()
-        self.btn_start = QPushButton("Démarrer ✅")
-        self.btn_stop = QPushButton("Arrêter 🛑")
+        self.btn_start = QPushButton("▶️ Démarrer")
+        self.btn_stop = QPushButton("🛑 Arrêter")
+        self.btn_restart = QPushButton("🔄 Redémarrer")
+        self.btn_add_plane = QPushButton("➕ Ajouter Avion")
+
         self.btn_start.clicked.connect(self._demarrer_simu)
         self.btn_stop.clicked.connect(self._arreter_simu)
+        self.btn_restart.clicked.connect(self._redemarrer_simu)
+        self.btn_add_plane.clicked.connect(self._ajouter_avion_manuel)
+
         btn_layout.addWidget(self.btn_start)
         btn_layout.addWidget(self.btn_stop)
+        btn_layout.addWidget(self.btn_restart)
+        btn_layout.addWidget(self.btn_add_plane)
+
         radar_layout.addLayout(btn_layout)
 
-        main_layout.addWidget(radar_group, 3)  # Le radar prend plus de place
+        main_layout.addWidget(radar_group, 3)
 
-        # --- Panneau Droit : Contrôles et Infos ---
         control_panel = QVBoxLayout()
 
-        # 1. Statistiques
         stats_group = QGroupBox("Statistiques")
         stats_layout = QGridLayout(stats_group)
 
@@ -63,7 +68,7 @@ class MainWindow(QMainWindow):
         stats_layout.addWidget(self.label_statut, 0, 0, 1, 2)
 
         self.label_score = QLabel("0")
-        stats_layout.addWidget(QLabel("Score:"), 1, 0)
+        stats_layout.addWidget(QLabel("Score Total:"), 1, 0)
         stats_layout.addWidget(self.label_score, 1, 1)
 
         self.label_avion_count = QLabel("0")
@@ -71,29 +76,36 @@ class MainWindow(QMainWindow):
         stats_layout.addWidget(self.label_avion_count, 2, 1)
 
         self.label_atterris = QLabel("0")
-        stats_layout.addWidget(QLabel("Atterrissages réussis:"), 3, 0)
+        stats_layout.addWidget(QLabel("Atterrissages:"), 3, 0)
         stats_layout.addWidget(self.label_atterris, 3, 1)
+
+        self.label_crashes = QLabel("0")
+        self.label_crashes.setStyleSheet("color: #ff5555; font-weight: bold;")
+        stats_layout.addWidget(QLabel("Crashs / Pertes:"), 4, 0)
+        stats_layout.addWidget(self.label_crashes, 4, 1)
+
+        self.label_avoided = QLabel("0")
+        self.label_avoided.setStyleSheet("color: #55ff55; font-weight: bold;")
+        stats_layout.addWidget(QLabel("Collisions Évitées:"), 5, 0)
+        stats_layout.addWidget(self.label_avoided, 5, 1)
 
         self.spin_speed = QSpinBox()
         self.spin_speed.setRange(1, 10)
         self.spin_speed.setValue(int(self.simulation.VITESSE_SIMULATION_DEFAUT))
         self.spin_speed.valueChanged.connect(self._update_sim_speed)
-        stats_layout.addWidget(QLabel("Vitesse Simu (x):"), 4, 0)
-        stats_layout.addWidget(self.spin_speed, 4, 1)
+        stats_layout.addWidget(QLabel("Vitesse Simu (x):"), 6, 0)
+        stats_layout.addWidget(self.spin_speed, 6, 1)
 
         control_panel.addWidget(stats_group)
 
-        # 2. Liste des avions (NOUVEAU)
         liste_group = QGroupBox("Sélection d'Avion")
         liste_layout = QVBoxLayout(liste_group)
         self.list_avions = QListWidget()
-        self.list_avions.setMaximumHeight(150)  # CORRECTION ICI : setMaximumHeight au lieu de setMaxHeight
-        # Connexion Clic Liste -> Sélection
+        self.list_avions.setMaximumHeight(150)
         self.list_avions.itemClicked.connect(self._on_list_clicked)
         liste_layout.addWidget(self.list_avions)
         control_panel.addWidget(liste_group)
 
-        # 3. Zone de Contrôle (Principale)
         self.control_group = QGroupBox("Commandes (Sélectionné: Aucun)")
         self.control_layout = QVBoxLayout(self.control_group)
 
@@ -112,7 +124,6 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
 
     def _setup_instruction_panel(self):
-        # --- Cap ---
         cap_group = QGroupBox("Cap")
         cv_layout = QGridLayout(cap_group)
 
@@ -127,15 +138,14 @@ class MainWindow(QMainWindow):
 
         self.control_layout.addWidget(cap_group)
 
-        # --- Altitude (Boutons demandés) ---
         alt_group = QGroupBox("Altitude")
         alt_layout = QGridLayout(alt_group)
 
         self.spin_alt = QSpinBox()
-        self.spin_alt.setRange(0, 15000)
+        self.spin_alt.setRange(1000, 5000)
         self.spin_alt.setSuffix(" m")
         self.spin_alt.setSingleStep(500)
-        self.spin_alt.setReadOnly(True)  # Juste pour affichage, on utilise les boutons
+        self.spin_alt.setReadOnly(True)
 
         self.btn_monter = QPushButton("⬆️ Monter (+500m)")
         self.btn_descendre = QPushButton("⬇️ Descendre (-500m)")
@@ -150,7 +160,6 @@ class MainWindow(QMainWindow):
 
         self.control_layout.addWidget(alt_group)
 
-        # --- Actions Spéciales ---
         actions_group = QGroupBox("Actions")
         actions_layout = QHBoxLayout(actions_group)
         self.btn_atterrir = QPushButton("✔ Demander Atterrissage")
@@ -169,7 +178,6 @@ class MainWindow(QMainWindow):
         self.selected_info.setVisible(not show or self.avion_selectionne is None)
 
     def _selectionner_avion(self, avion: Avion):
-        """Gère la sélection d'un avion (depuis Radar ou Liste)."""
         self.avion_selectionne = avion
 
         if avion is None or not avion.en_vol:
@@ -177,57 +185,74 @@ class MainWindow(QMainWindow):
             self.control_group.setTitle("Commandes (Sélectionné: Aucun)")
             self.control_group.setEnabled(False)
             self._show_instruction_panel(False)
-            # Désélectionner dans la liste aussi si besoin
             self.list_avions.clearSelection()
             return
 
-        # Mise à jour de l'interface
         self.control_group.setTitle(f"Commandes (Sélectionné: {avion.identifiant})")
         self.control_group.setEnabled(True)
         self._show_instruction_panel(True)
 
-        # Mettre à jour les champs
         self.spin_cap.setValue(avion.cap)
         self.spin_alt.setValue(avion.altitude)
         self.btn_atterrir.setEnabled(not avion.instruction_atterrissage)
 
-        # Le texte sera mis à jour dans le tick pour rester dynamique
-
-        # Synchroniser le radar (visuel jaune)
         self.radar_view.selectionner_avion_par_id(avion.identifiant)
 
-        # Synchroniser la liste (surligner l'élément)
-        items = self.list_avions.findItems(avion.identifiant, Qt.MatchExactly)
-        if items:
-            self.list_avions.setCurrentItem(items[0])
+        for i in range(self.list_avions.count()):
+            item = self.list_avions.item(i)
+            if item.data(Qt.UserRole) == avion.identifiant:
+                self.list_avions.setCurrentItem(item)
+                break
 
     def _on_list_clicked(self, item):
-        """Appelé quand on clique sur un élément de la liste."""
-        id_avion = item.text()
-        # Retrouver l'objet avion correspondant
+        id_avion = item.data(Qt.UserRole)
         avion_trouve = next((a for a in self.simulation.espace.avions if a.identifiant == id_avion), None)
         if avion_trouve:
             self._selectionner_avion(avion_trouve)
 
     def _update_list_avions(self):
-        """Met à jour la liste des avions affichée."""
-        # 1. Récupérer les IDs actuellement dans la liste
-        ids_liste = [self.list_avions.item(i).text() for i in range(self.list_avions.count())]
+        limit_x = self.simulation.espace.TAILLE_X
+        limit_y = self.simulation.espace.TAILLE_Y
 
-        # 2. Ajouter les nouveaux avions
+        avions_visibles = []
+        ids_visibles = set()
+
         for avion in self.simulation.espace.avions:
-            if avion.identifiant not in ids_liste:
-                self.list_avions.addItem(avion.identifiant)
+            if 0 <= avion.x <= limit_x and 0 <= avion.y <= limit_y:
+                avions_visibles.append(avion)
+                ids_visibles.add(avion.identifiant)
 
-        # 3. Retirer les avions disparus (atterris ou crashés)
-        # On parcourt à l'envers pour supprimer sans casser les index
-        ids_simulation = {a.identifiant for a in self.simulation.espace.avions}
+        existing_items = {}
+        for i in range(self.list_avions.count()):
+            item = self.list_avions.item(i)
+            uid = item.data(Qt.UserRole)
+            if uid:
+                existing_items[uid] = item
+
+        for avion in avions_visibles:
+            display_text = avion.identifiant
+            if avion.incident:
+                display_text += " ⚠️ (Panne)"
+            elif avion.alerte_collision:
+                display_text += " ⚔️ (COLLISION)"
+
+            if avion.compteur_tempete > 0:
+                display_text += " ⛈️"
+
+            if avion.identifiant in existing_items:
+                item = existing_items[avion.identifiant]
+                if item.text() != display_text:
+                    item.setText(display_text)
+            else:
+                item = QListWidgetItem(display_text)
+                item.setData(Qt.UserRole, avion.identifiant)
+                self.list_avions.addItem(item)
+
         for i in range(self.list_avions.count() - 1, -1, -1):
-            item_text = self.list_avions.item(i).text()
-            if item_text not in ids_simulation:
+            item = self.list_avions.item(i)
+            uid = item.data(Qt.UserRole)
+            if uid not in ids_visibles:
                 self.list_avions.takeItem(i)
-
-    # --- Actions ---
 
     def _changer_cap(self):
         if self.avion_selectionne and self.avion_selectionne.en_vol:
@@ -236,42 +261,38 @@ class MainWindow(QMainWindow):
 
     def _changer_altitude(self, delta: int):
         if self.avion_selectionne and self.avion_selectionne.en_vol:
-            if delta > 0:
-                self.avion_selectionne.monter(delta)
+            nouvelle_alt = self.avion_selectionne.altitude + delta
+            if 1000 <= nouvelle_alt <= 5000:
+                if delta > 0:
+                    self.avion_selectionne.monter(delta)
+                else:
+                    self.avion_selectionne.descendre(abs(delta))
+                self.spin_alt.setValue(self.avion_selectionne.altitude)
             else:
-                self.avion_selectionne.descendre(abs(delta))
-            self.spin_alt.setValue(self.avion_selectionne.altitude)
+                print(f"Altitude hors limite (1000-5000) : {nouvelle_alt}")
 
     def _demander_atterrissage(self):
-        """Active l'instruction d'atterrissage, calcule le cap vers l'aéroport et baisse l'altitude."""
         if self.avion_selectionne and self.avion_selectionne.en_vol:
-            # 1. Calcul du cap vers l'aéroport (Centre 500, 500)
             target_x = self.simulation.espace.AEROPORT_X
             target_y = self.simulation.espace.AEROPORT_Y
 
             dx = target_x - self.avion_selectionne.x
             dy = target_y - self.avion_selectionne.y
 
-            # Calcul de l'angle en degrés
             angle_rad = math.atan2(dy, dx)
             angle_deg = math.degrees(angle_rad)
             if angle_deg < 0:
                 angle_deg += 360
 
-            # Application du cap
             self.avion_selectionne.changer_cap(int(angle_deg))
-            self.spin_cap.setValue(int(angle_deg))  # Mise à jour visuelle
+            self.spin_cap.setValue(int(angle_deg))
 
-            # 2. Descente à l'altitude d'approche (1000m) si nécessaire
             if self.avion_selectionne.altitude > 1000:
                 self.avion_selectionne.altitude = 1000
                 self.spin_alt.setValue(1000)
 
-            # 3. Activer le mode approche
             self.simulation.traiter_atterrissage(self.avion_selectionne)
             self.btn_atterrir.setEnabled(False)
-
-    # --- Boucle Simulation ---
 
     def _setup_timer(self):
         self.timer = QTimer(self)
@@ -281,19 +302,22 @@ class MainWindow(QMainWindow):
     def _simulation_tick(self):
         self.simulation.mise_a_jour()
 
-        self.radar_view.update_radar(self.simulation.espace.avions)
+        self.radar_view.update_radar(self.simulation.espace.avions, self.simulation.espace.tempetes)
 
-        # Mise à jour de la liste
         self._update_list_avions()
 
         if self.avion_selectionne:
-            # Infos de base
             info = f"ID: {self.avion_selectionne.identifiant}\n"
             info += f"Alt: {self.avion_selectionne.altitude}m | V: {self.avion_selectionne.vitesse}km/h\n"
             info += f"Cap: {self.avion_selectionne.cap}° | Fuel: {self.avion_selectionne.carburant:.1f}%\n"
 
-            # Affichage de l'état de la mission pour guider le joueur
-            if self.avion_selectionne.instruction_atterrissage:
+            if self.avion_selectionne.compteur_tempete > 0:
+                info += f"\n[⛈️ ALERTE TEMPÊTE] {self.avion_selectionne.compteur_tempete:.1f}s avant crash !"
+                self.selected_info.setStyleSheet("font-weight: bold; color: #ff5555;")
+            elif self.avion_selectionne.incident:
+                info += "\n[⚠️ PANNE DÉTECTÉE] Atterrissage d'urgence recommandé !"
+                self.selected_info.setStyleSheet("font-weight: bold; color: #ff8c00;")
+            elif self.avion_selectionne.instruction_atterrissage:
                 info += "\n[⚠️ EN APPROCHE] L'avion se dirige vers la piste...\n"
                 info += "Atterrissage automatique à portée."
                 self.selected_info.setStyleSheet("font-weight: bold; color: orange;")
@@ -303,7 +327,6 @@ class MainWindow(QMainWindow):
 
             self.selected_info.setText(info)
 
-            # Si l'avion n'est plus en vol, on le désélectionne
             if not self.avion_selectionne.en_vol:
                 self._selectionner_avion(None)
 
@@ -311,6 +334,8 @@ class MainWindow(QMainWindow):
         self.label_score.setText(f"{stats['score']}")
         self.label_avion_count.setText(f"{stats['avions_en_vol']}")
         self.label_atterris.setText(f"{stats['avions_atterris']}")
+        self.label_crashes.setText(f"{stats['avions_perdus']}")
+        self.label_avoided.setText(f"{stats['collisions_evitees']}")
 
         if self.simulation.en_cours and stats['avions_en_vol'] > 10:
             self.label_avion_count.setStyleSheet("font-weight: bold; color: orange;")
@@ -329,3 +354,16 @@ class MainWindow(QMainWindow):
         self.simulation.arreter()
         self.label_statut.setText("STATUT : ARRÊTÉ")
         self.label_statut.setStyleSheet("font-weight: bold; color: red;")
+
+    def _redemarrer_simu(self):
+        self.simulation.redemarrer()
+        self.radar_view.update_radar(self.simulation.espace.avions, self.simulation.espace.tempetes)
+        self._update_list_avions()
+        self._selectionner_avion(None)
+        self.label_statut.setText("STATUT : ARRÊTÉ")
+        self.label_statut.setStyleSheet("font-weight: bold; color: red;")
+
+    def _ajouter_avion_manuel(self):
+        self.simulation.ajouter_avion()
+        self.radar_view.update_radar(self.simulation.espace.avions, self.simulation.espace.tempetes)
+        self._update_list_avions()
