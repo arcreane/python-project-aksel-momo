@@ -54,7 +54,7 @@ class EspaceAerien:
 
             if MARGE < x < self.TAILLE_X - MARGE and MARGE < y < self.TAILLE_Y - MARGE:
                 conflit_cree = True
-                print(f"⚠️ SCENARIO CONFLIT : {identifiant} généré près de {cible.identifiant} !")
+
 
         if not conflit_cree:
             X_MIN, X_MAX = MARGE, self.TAILLE_X - MARGE
@@ -72,8 +72,9 @@ class EspaceAerien:
         y = random.uniform(100, self.TAILLE_Y - 100)
         rayon = random.randint(50, 120)
         duree = random.randint(200, 600)
-        self.tempetes.append(ZoneTempete(x, y, rayon, duree))
-        print(f"🌩️ Tempête détectée en ({int(x)}, {int(y)}) Rayon: {rayon} Durée: {duree}")
+        nouvelle_tempete = ZoneTempete(x, y, rayon, duree)
+        self.tempetes.append(nouvelle_tempete)
+        return nouvelle_tempete
 
     def detecter_collisions(self) -> list[Avion]:
         crashed_planes = set()
@@ -108,7 +109,7 @@ class EspaceAerien:
                 a2 = avions_par_id[id2]
                 if a1 not in crashed_planes and a2 not in crashed_planes:
                     self.collisions_evitees += 1
-                    print(f"✨ Collision évitée entre {id1} et {id2} !")
+
 
         self.conflits_actifs = nouveaux_conflits
 

@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
     QLabel, QPushButton, QApplication, QGroupBox, QSpinBox, QListWidget, QListWidgetItem
 )
 from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QColor, QBrush
 from model.simulation import Simulation
 from model.avion import Avion
 from ui.radar_view import RadarView
@@ -16,7 +17,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Simulateur Tour de Contrôle 🛫")
-        self.setGeometry(100, 100, 1300, 850)
+        self.setGeometry(100, 100, 1300, 900)
 
         self.simulation = Simulation()
         self.avion_selectionne: Avion = None
@@ -55,7 +56,6 @@ class MainWindow(QMainWindow):
         btn_layout.addWidget(self.btn_add_plane)
 
         radar_layout.addLayout(btn_layout)
-
         main_layout.addWidget(radar_group, 3)
 
         control_panel = QVBoxLayout()
@@ -101,32 +101,36 @@ class MainWindow(QMainWindow):
         liste_group = QGroupBox("Sélection d'Avion")
         liste_layout = QVBoxLayout(liste_group)
         self.list_avions = QListWidget()
-        self.list_avions.setMaximumHeight(150)
+        self.list_avions.setMaximumHeight(100)
         self.list_avions.itemClicked.connect(self._on_list_clicked)
         liste_layout.addWidget(self.list_avions)
         control_panel.addWidget(liste_group)
 
         self.control_group = QGroupBox("Commandes (Sélectionné: Aucun)")
         self.control_layout = QVBoxLayout(self.control_group)
-
-        self.selected_info = QLabel("Sélectionnez un avion (Radar ou Liste) pour afficher les commandes.")
+        self.selected_info = QLabel("Sélectionnez un avion...")
         self.selected_info.setStyleSheet("font-style: italic; color: gray;")
         self.selected_info.setWordWrap(True)
         self.control_layout.addWidget(self.selected_info)
-
         self._setup_instruction_panel()
         self.control_group.setEnabled(False)
-
         control_panel.addWidget(self.control_group)
 
-        control_panel.addStretch(1)
+        log_group = QGroupBox("Journal de Bord")
+        log_layout = QVBoxLayout(log_group)
+        self.list_logs = QListWidget()
+        self.list_logs.setAlternatingRowColors(True)
+        self.list_logs.setStyleSheet("font-size: 10px;")
+        log_layout.addWidget(self.list_logs)
+        control_panel.addWidget(log_group, 1)
+
+        control_panel.addStretch(0)
         main_layout.addLayout(control_panel, 1)
         self.setCentralWidget(central_widget)
 
     def _setup_instruction_panel(self):
         cap_group = QGroupBox("Cap")
         cv_layout = QGridLayout(cap_group)
-
         self.spin_cap = QSpinBox()
         self.spin_cap.setRange(0, 359)
         self.spin_cap.setSuffix("°")
@@ -135,29 +139,23 @@ class MainWindow(QMainWindow):
         cv_layout.addWidget(QLabel("Nouveau Cap:"), 0, 0)
         cv_layout.addWidget(self.spin_cap, 0, 1)
         cv_layout.addWidget(self.btn_set_cap, 0, 2)
-
         self.control_layout.addWidget(cap_group)
 
         alt_group = QGroupBox("Altitude")
         alt_layout = QGridLayout(alt_group)
-
         self.spin_alt = QSpinBox()
         self.spin_alt.setRange(1000, 5000)
         self.spin_alt.setSuffix(" m")
         self.spin_alt.setSingleStep(500)
         self.spin_alt.setReadOnly(True)
-
         self.btn_monter = QPushButton("⬆️ Monter (+500m)")
         self.btn_descendre = QPushButton("⬇️ Descendre (-500m)")
-
         self.btn_monter.clicked.connect(lambda: self._changer_altitude(500))
         self.btn_descendre.clicked.connect(lambda: self._changer_altitude(-500))
-
-        alt_layout.addWidget(QLabel("Altitude actuelle:"), 0, 0)
+        alt_layout.addWidget(QLabel("Altitude:"), 0, 0)
         alt_layout.addWidget(self.spin_alt, 0, 1)
         alt_layout.addWidget(self.btn_monter, 1, 0)
         alt_layout.addWidget(self.btn_descendre, 1, 1)
-
         self.control_layout.addWidget(alt_group)
 
         actions_group = QGroupBox("Actions")
@@ -165,7 +163,6 @@ class MainWindow(QMainWindow):
         self.btn_atterrir = QPushButton("✔ Demander Atterrissage")
         self.btn_atterrir.clicked.connect(self._demander_atterrissage)
         actions_layout.addWidget(self.btn_atterrir)
-
         self.control_layout.addWidget(actions_group)
 
         for widget in [cap_group, alt_group, actions_group]:
@@ -179,7 +176,6 @@ class MainWindow(QMainWindow):
 
     def _selectionner_avion(self, avion: Avion):
         self.avion_selectionne = avion
-
         if avion is None or not avion.en_vol:
             self.avion_selectionne = None
             self.control_group.setTitle("Commandes (Sélectionné: Aucun)")
@@ -191,13 +187,10 @@ class MainWindow(QMainWindow):
         self.control_group.setTitle(f"Commandes (Sélectionné: {avion.identifiant})")
         self.control_group.setEnabled(True)
         self._show_instruction_panel(True)
-
         self.spin_cap.setValue(avion.cap)
         self.spin_alt.setValue(avion.altitude)
         self.btn_atterrir.setEnabled(not avion.instruction_atterrissage)
-
         self.radar_view.selectionner_avion_par_id(avion.identifiant)
-
         for i in range(self.list_avions.count()):
             item = self.list_avions.item(i)
             if item.data(Qt.UserRole) == avion.identifiant:
@@ -213,10 +206,8 @@ class MainWindow(QMainWindow):
     def _update_list_avions(self):
         limit_x = self.simulation.espace.TAILLE_X
         limit_y = self.simulation.espace.TAILLE_Y
-
         avions_visibles = []
         ids_visibles = set()
-
         for avion in self.simulation.espace.avions:
             if 0 <= avion.x <= limit_x and 0 <= avion.y <= limit_y:
                 avions_visibles.append(avion)
@@ -235,7 +226,6 @@ class MainWindow(QMainWindow):
                 display_text += " ⚠️ (Panne)"
             elif avion.alerte_collision:
                 display_text += " ⚔️ (COLLISION)"
-
             if avion.compteur_tempete > 0:
                 display_text += " ⛈️"
 
@@ -254,6 +244,22 @@ class MainWindow(QMainWindow):
             if uid not in ids_visibles:
                 self.list_avions.takeItem(i)
 
+    def _update_logs(self):
+        msgs = self.simulation.pop_messages()
+        for type_msg, text in msgs:
+            item = QListWidgetItem(text)
+            if type_msg == "DANGER":
+                item.setForeground(QBrush(QColor("#ff5555")))
+            elif type_msg == "WARNING":
+                item.setForeground(QBrush(QColor("#ffb86c")))
+            elif type_msg == "SUCCESS":
+                item.setForeground(QBrush(QColor("#50fa7b")))
+            else:
+                item.setForeground(QBrush(QColor("#f8f8f2")))
+
+            self.list_logs.addItem(item)
+            self.list_logs.scrollToBottom()
+
     def _changer_cap(self):
         if self.avion_selectionne and self.avion_selectionne.en_vol:
             nouveau_cap = self.spin_cap.value()
@@ -268,29 +274,21 @@ class MainWindow(QMainWindow):
                 else:
                     self.avion_selectionne.descendre(abs(delta))
                 self.spin_alt.setValue(self.avion_selectionne.altitude)
-            else:
-                print(f"Altitude hors limite (1000-5000) : {nouvelle_alt}")
 
     def _demander_atterrissage(self):
         if self.avion_selectionne and self.avion_selectionne.en_vol:
             target_x = self.simulation.espace.AEROPORT_X
             target_y = self.simulation.espace.AEROPORT_Y
-
             dx = target_x - self.avion_selectionne.x
             dy = target_y - self.avion_selectionne.y
-
             angle_rad = math.atan2(dy, dx)
             angle_deg = math.degrees(angle_rad)
-            if angle_deg < 0:
-                angle_deg += 360
-
+            if angle_deg < 0: angle_deg += 360
             self.avion_selectionne.changer_cap(int(angle_deg))
             self.spin_cap.setValue(int(angle_deg))
-
             if self.avion_selectionne.altitude > 1000:
                 self.avion_selectionne.altitude = 1000
                 self.spin_alt.setValue(1000)
-
             self.simulation.traiter_atterrissage(self.avion_selectionne)
             self.btn_atterrir.setEnabled(False)
 
@@ -301,32 +299,27 @@ class MainWindow(QMainWindow):
 
     def _simulation_tick(self):
         self.simulation.mise_a_jour()
-
         self.radar_view.update_radar(self.simulation.espace.avions, self.simulation.espace.tempetes)
-
         self._update_list_avions()
+        self._update_logs()
 
         if self.avion_selectionne:
             info = f"ID: {self.avion_selectionne.identifiant}\n"
             info += f"Alt: {self.avion_selectionne.altitude}m | V: {self.avion_selectionne.vitesse}km/h\n"
             info += f"Cap: {self.avion_selectionne.cap}° | Fuel: {self.avion_selectionne.carburant:.1f}%\n"
-
             if self.avion_selectionne.compteur_tempete > 0:
-                info += f"\n[⛈️ ALERTE TEMPÊTE] {self.avion_selectionne.compteur_tempete:.1f}s avant crash !"
+                info += f"\n[⛈️ ALERTE TEMPÊTE] {self.avion_selectionne.compteur_tempete:.1f}s"
                 self.selected_info.setStyleSheet("font-weight: bold; color: #ff5555;")
             elif self.avion_selectionne.incident:
-                info += "\n[⚠️ PANNE DÉTECTÉE] Atterrissage d'urgence recommandé !"
+                info += "\n[⚠️ PANNE DÉTECTÉE]"
                 self.selected_info.setStyleSheet("font-weight: bold; color: #ff8c00;")
             elif self.avion_selectionne.instruction_atterrissage:
-                info += "\n[⚠️ EN APPROCHE] L'avion se dirige vers la piste...\n"
-                info += "Atterrissage automatique à portée."
+                info += "\n[⚠️ EN APPROCHE]"
                 self.selected_info.setStyleSheet("font-weight: bold; color: orange;")
             else:
-                info += "\n[EN VOL] En attente d'instructions."
+                info += "\n[EN VOL]"
                 self.selected_info.setStyleSheet("font-style: italic; color: white;")
-
             self.selected_info.setText(info)
-
             if not self.avion_selectionne.en_vol:
                 self._selectionner_avion(None)
 
@@ -359,6 +352,8 @@ class MainWindow(QMainWindow):
         self.simulation.redemarrer()
         self.radar_view.update_radar(self.simulation.espace.avions, self.simulation.espace.tempetes)
         self._update_list_avions()
+        self.list_logs.clear()
+        self._update_logs()
         self._selectionner_avion(None)
         self.label_statut.setText("STATUT : ARRÊTÉ")
         self.label_statut.setStyleSheet("font-weight: bold; color: red;")
